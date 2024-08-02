@@ -10,7 +10,6 @@ This solution is deployed via Google Sheets Extensions, Google Apps Script, and 
 
 ![Architecture](architecture.png "Architecture")
 
-
 ## To Run this Application Yourself
 
 1. Create a new Google Sheet.
@@ -20,6 +19,16 @@ This solution is deployed via Google Sheets Extensions, Google Apps Script, and 
 5. Create API Gateway and S3 buckets with necessary policies according to the architecture diagram.
 
 Eventual plans are to deploy this solution on the Google Extensions wrokspace marketplace for all Clark employees to access.
+
+## Future Plans
+
+Given additional time and resources to improve this tool, we would focus on two main areas:
+1. Enhancing the PDF text extraction to only extract relevant testing and inspections text (as opposed to the whole document).
+2. Strengthening the LLM prompting to return more accurate and reliable responses.
+
+## Note on Hard-Coding
+
+The example output CSV file is hard-coded to demonstrate the expected output of the tool. In production, the tool uses an LLM to produce the responses, which is stochasitc in nature and may produce innacurate or unreliable results. This phenomenon is localized to the beti-query-bedrock Lambda function, where we query an LLM.
 
 ## Contributing
 
@@ -32,12 +41,6 @@ Devon Trepp devon.trepp@clarkconstruction.com
 Shelton Carr shelton.carrg@clarkconstruction.com
 
 Stefanie Carlisle stefanie.carlisle@clarkconstruction.com
-
-## Future Plans
-
-Given additional time and resources to improve this tool, we would focus on two main areas:
-1. Enhancing the PDF text extraction to only extract relevant testing and inspections text (as opposed to the whole document).
-2. Strengthening the LLM prompting to return more accurate and reliable responses.
 
 ## License
 

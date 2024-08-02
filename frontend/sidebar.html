@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <!-- Include the AWS SDK -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/aws-sdk/2.1151.0/aws-sdk.min.js"></script>
+    <base target="_top">
+    <style>
+        label, input, select, button {
+            display: block;
+            margin-bottom: 10px;
+        }
+        .spinner-container {
+            display: flex;
+            align-items: center;
+        }
+        .spinner {
+            margin-right: 10px;
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: #09f;
+            animation: spin 1s ease infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        #button-container {
+            display: flex;
+            justify-content: center;
+            margin-top: 10px;
+        }
+        .move-button {
+            margin: 0 5px;
+            padding: 5px 10px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div style="text-align: center;">
+        <img src="https://www.washingtonenglish.org/wp-content/uploads/2023/04/Clark-Construction-Logo-Screen-and-Web-RGB-1-300x114.jpg" alt="Clark Construction Logo" style="width: 280px;">
+    </div>
+    <h3>Upload Spec</h3>
+    <form>
+        <input type="file" id="fileInput" accept=".pdf" onchange="checkFileType(event)">
+        <button type="button" onclick="uploadPDFtoS3()">Upload</button>
+    </form>
+</body>
+
+<script>
+    const api_stage_url = 'https://mm1yig7rya.execute-api.us-east-1.amazonaws.com/dev';
+
+    async function uploadPDFtoS3() {
+        const fileInput = document.getElementById('fileInput');
+        const file = fileInput.files[0];
+        if (!file) {
+            alert('No file selected.');
+            return;
+        }
+
+        const fileName = file.name.replace(/\+/g, '');
+        const GETurl = `${api_stage_url}/upload/?file=${encodeURIComponent(fileName)}`;
+        console.log(`${api_stage_url}/upload/?file=${encodeURIComponent(fileName)}`);
+        console.log(GETurl);
+
+        const response = await fetch(GETurl, { method: 'GET' });
+
+        if (!response.ok) {
+            alert('Error uploading file.');
+            return;
+        }
+
+        const responseJson = await response.json();
+        const PUTurl = responseJson.URL;
+        const uploadResponse = await fetch(PUTurl, {
+            method: 'PUT',
+            body: file
+        });
+
+        if (!uploadResponse.ok) {
+            alert('Error uploading file.');
+            return;
+        }
+
+        startPolling(fileName);
+    }
+
+    let intervalId;
+    let pollingAttempts = 0;
+    const maxPollingAttempts = 240; // Poll for 20 minutes at 5-second intervals
+
+    function startPolling(fileName) {
+        const csvFileName = fileName.replace('.pdf', '.csv');
+        const apiUrl = `${api_stage_url}/download?file=${encodeURIComponent(csvFileName)}`;
+        const pollingInterval = 5000;
+
+        const spinner = document.createElement('div');
+        spinner.className = 'spinner-container';
+        const spinnerChild = document.createElement('div');
+        spinnerChild.className = 'spinner';
+        spinner.appendChild(spinnerChild);
+        document.body.appendChild(spinner);
+
+        intervalId = setInterval(async () => {
+            try {
+                const response = await fetch(apiUrl);
+                if (response.ok) {
+                    const data = await response.text();
+                    const parsedData = parseCSV(data);
+
+                    google.script.run.withFailureHandler(function(error) {
+                        console.error('Error running writeDataToSheet:', error);
+                    }).writeDataToSheet(parsedData);
+
+                    clearInterval(intervalId);
+                    spinner.style.display = 'none';
+                    alert('CSV file processed successfully.');
+                } else {
+                    console.log(`Polling attempt ${pollingAttempts + 1} failed.`);
+                }
+                pollingAttempts++;
+                if (pollingAttempts >= maxPollingAttempts) {
+                    clearInterval(intervalId);
+                    alert('Polling timed out.');
+                    spinner.style.display = 'none';
+                }
+            } catch (error) {
+                console.error('An error occurred:', error);
+                clearInterval(intervalId);
+                alert(`An error occurred: ${error.message}`);
+                spinner.style.display = 'none';
+            }
+        }, pollingInterval);
+    }
+
+function parseCSV(data) {
+    // Initialize an array to hold our rows
+    const rows = [];
+    let currentRow = [];
+    let currentCell = "";
+    let inQuotes = false;
+
+    // Iterate over each character in the data
+    for (let i = 0; i < data.length; i++) {
+        const char = data[i];
+        const nextChar = i < data.length - 1 ? data[i + 1] : null;
+
+        // Handle entering or exiting quotes
+        if (char === '"' && !inQuotes) {
+            inQuotes = true;
+            if (currentCell !== "" || nextChar === '"') { // Check for start of quoted string or empty quote
+                currentCell += char;
+            }
+            continue;
+        }
+        if (char === '"' && inQuotes) {
+            if (nextChar === '"') { // Check for escaped quote
+                currentCell += '"';
+                i++; // Skip next quote
+            } else {
+                inQuotes = false;
+            }
+            continue;
+        }
+
+        // Handle end of cell
+        if (char === ',' && !inQuotes) {
+            currentRow.push(currentCell);
+            currentCell = "";
+            continue;
+        }
+
+        // Handle end of row
+        if (char === '\n' && !inQuotes) {
+            if (currentCell !== "") { // If there's data in the current cell, add it to the row
+                currentRow.push(currentCell);
+                currentCell = "";
+            }
+            rows.push(currentRow);
+            currentRow = [];
+            continue;
+        }
+
+        // Add the current character to the current cell
+        currentCell += char;
+    }
+
+    // Add the last cell and row if not already added
+    if (currentCell !== "") {
+        currentRow.push(currentCell);
+    }
+    if (currentRow.length > 0) {
+        rows.push(currentRow);
+    }
+
+    return rows;
+}
+
+
+
+    function checkFileType(event) {
+        var file = event.target.files[0];
+        if (file.type !== 'application/pdf') {
+            alert('File is not a PDF!');
+            event.target.value = ''; // Reset the input value
+        }
+    }
+</script>
+
+</html>
+
+<script>
+var TITLE = 'Building Enclosure Tests Tool';
+
+const createMenu = () => {
+  const menu = SpreadsheetApp.getUi()
+    .createMenu(TITLE)
+    .addItem(TITLE, 'showConfig') // This opens the sidebar
+    .addToUi();
+  menu.addToUi();
+};
+
+const onOpen = () => {
+  createMenu();
+};
+
+const showConfig = () => {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet();
+  const props = PropertiesService.getDocumentProperties().getProperties();
+  const template = HtmlService.createTemplateFromFile('sidebar');
+  const htmlOutput = template.evaluate();
+  htmlOutput.setTitle(TITLE).setWidth(300);
+  SpreadsheetApp.getUi().showSidebar(htmlOutput);
+};
+
+function writeDataToSheet(data) {
+  try {
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+    var lastRow = sheet.getLastRow() + 1;
+    for (var i = 0; i < data.length; i++) {
+      sheet.getRange(lastRow + i, 1, 1, data[i].length).setValues([data[i]]);
+    }
+    Logger.log("Data successfully written to the sheet.");
+  } catch (error) {
+    Logger.log("An error occurred: " + error.toString());
+  }
+}
+</script>

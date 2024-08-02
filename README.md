@@ -44,5 +44,4 @@ Stefanie Carlisle stefanie.carlisle@clarkconstruction.com
 
 ## License
 
----
 This repository is intended for Clark Construction Group LLC and is not licensed for any external use.

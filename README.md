@@ -2,9 +2,9 @@
 
 ## Introduction
 
-The purpose of this tool is to allow users to upload Spec Section PDFs and automatically extract relevant testing and inspection information.
+This tool is a Google Sheets Extension that takes a user-uploaded Spec Section PDF and returns relevant testing and inspection information written directly into the Google Sheet.
 
-This solution is deployed via Google Extensions, Google Apps Script, and AWS.
+This solution is deployed via Google Sheets Extensions, Google Apps Script, and AWS.
 
 ## Architecture
 

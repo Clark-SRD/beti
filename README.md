@@ -28,7 +28,7 @@ Given additional time and resources to improve this tool, we would focus on two 
 
 ## Note on Hard-Coding
 
-The example output CSV file is hard-coded to demonstrate the expected output of the tool. In production, the tool uses an LLM to produce the responses, which is stochasitc in nature and may produce innacurate or unreliable results. This phenomenon is localized to the beti-query-bedrock Lambda function, where we query an LLM.
+The example output CSV file is hard-coded to demonstrate the expected output of the tool. In production, the tool uses an LLM to produce the responses, which is stochastic in nature and may produce innacurate or unreliable results. This phenomenon is localized to the beti-query-bedrock Lambda function, where we query an LLM.
 
 ## Contributing
 
